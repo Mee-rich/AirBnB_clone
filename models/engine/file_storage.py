@@ -58,10 +58,17 @@ class FileStorage():
     
     def update(self, key, attr, value):
         """updates an instance"""
-        model = FileStorage.__objects[key]
-        setattr(model, attr, value)
-
+        if key in FileStorage.__ojjects:
+            instance = FileStorage.__objects[key]
+            setattr(instance, attr, value)
+            instance.save()
+        else:
+            print("** no instance found **")
 
     def delete(self, key):
         """deletes an instance"""
-        del FileStorage.__objects[key]
+        if key in FileStorage.__objects:
+            del FileStorage.__objects[key]
+            self.save()
+        else:
+            print("** no instance found **")

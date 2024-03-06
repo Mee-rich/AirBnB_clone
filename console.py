@@ -2,23 +2,22 @@
 """Program that contains the entry point of the command interpreter
 """
 import cmd
-import json
 from models import storage
 from models.base_model import BaseModel
+from models.user import User
+from models.place import Place
+from models.city import City
+from models.state import State
+from models.amenity import Amenity
+from models.review import Review
 
 
 class HBNBCommand(cmd.Cmd):
     """Class for the command interpreter"""
 
+
     prompt = "(hbnb) "
-    class_dic = [
-            "BaseModel",
-            "User",
-            "City",
-            "State",
-            "Amenity",
-            "Review"
-    ]
+
 
     def emptyline(self):
         """Doesn't do anything on ENTER
@@ -39,34 +38,40 @@ class HBNBCommand(cmd.Cmd):
     def do_create(self, arg):
         """Create a new instance of BaseModel and save it to the JSON file
         """
-        
-        if arg == "":
+        args = arg.split()
+
+        if not args:
             print("** class name missing **")
-        elif arg not in ["BaseModel"]:
+            return
+        class_name = args[0]
+        if class_name not in [cls.__name__ for cls in globals().values() if isinstance(cls, type)]:
             print("** class doesn't exist **")
-        else:
-            new_instance = BaseModel()
-            new_instance.save()
-            print(new_instance.id)
+            return
+        new_instance = globals()[class_name]()
+        new_instance.save()
+        print(new_instance.id)
 
     def do_show(self, arg):
         """Prints the string representation of an instance 
         based on the class name and id"""
         args = arg.split()
 
-        if args == "":
+        if not args:
             print("** class name missing **")
-        elif args[0] not in ["BaseModel"]:
+            return
+        class_name = args[0]
+        if args[0] not in [cls.__name__ for cls in globals().values() if isinstance(cls,type)]:
             print("** class doesn't exist **")
-        elif len(args) < 2:
+            return
+        if len(args) < 2:
             print("** instance id is missing **")
+            return
+
+        key = "{}.{}".format(class_name, args[1])
+        if key in storage.all():
+            print(storage.all()[key])
         else:
-            objects = storage.all()
-            key = "{}.{}".format(args[0], args[1])
-            if key in objects:
-                print(objects[key])
-            else:
-                print("** no instance found **")
+            print("** no instance found **")
 
     def do_destroy(self, arg):
         """Deletes an instance based on the class name and id.
@@ -74,41 +79,38 @@ class HBNBCommand(cmd.Cmd):
         """
         args = arg.split()
 
-        if args == "":
+        if not args:
             print("** class name missing **")
-        elif args[0] not in ["BaseModel"]:
+            return
+        class_name = args[0]
+        if class_name not in [cls.__name__ for cls in globals().values() if isinstance(cls, type)]:
             print("** class doesn't exist **")
-        elif len(args) < 2:
-            print("** instance id missing **")           
+            return
+        if len(args) < 2:
+            print("** instance id missing **")
+            return
+        key = "{}.{}".format(class_name, args[1])
+        if key in storage.all():
+            del storage.all()[key]
+            storage.save()
         else:
-            object_id = args[1]
-            objects = storage.all()
-
-            key = "{}.{}".format(args[0], object_id)
-            if key not in objects:
-                print("** no instance found **")
-            else:
-                del objects[key]
-                storage.save()
+            print("** no instance found **")
 
     def do_all(self, arg):
-        """Prints string representation of sll instances or 
+        """Prints string representation of all instances or 
         based on class name"""
         args = arg.split()
-        objects = storage.all()
         
+
         if not args:
-            print([str(objects[obj]) for obj in objects])
-        elif args[0] not in ["BaseModel"]:
+            print([str(obj) for obj in storage.all().values()])
+            return
+        class_name = args[0] 
+        if class_name not in [cls.__name__ for cls in globals().values() if isinstance(cls, type)]:
             print("** class doesn't exist **")
-        else:
-            class_name = args[0]
-            objects_filtered =[str(obj) for obj in objects.values() if obj.__class__.__name__ == class_name]
-            if not objects_filtered:
-                print("** no instance found **")
-            else:
-                print(objects_filtered)
-    
+            return
+        print([str(obj) for key, obj in storage.all().items() if key.startswith(class_name + ".")])
+                
     def do_update(self, arg):
         """Updates an instance based on the class name and id by adding or
         updating attribute (save changes into the JSON file)
@@ -118,7 +120,7 @@ class HBNBCommand(cmd.Cmd):
 
         if not arg:
             print("** class name missing **")
-        elif args[0] not in ["BaseModel"]:
+        elif args[0] not in [cls.__name__ for cls in globals().values() if isinstance(cls, type)]:
             print("** class doesn't exist **")
         elif len(args) < 2:
             print("** instance id missing **")
@@ -134,6 +136,76 @@ class HBNBCommand(cmd.Cmd):
                 obj.save()
             else:
                 print("** no instance found **")
+
+    def default(self, arg):
+        """Default command that handles class cmds: <class name>.func()
+    
+        <class name>.all(): retrieve all instances of a class
+        <class name>.count(): retrieve the number of instances of a class
+        <class name>.show(<id>): retrieve an instance based on its ID
+        <class name>.destroy(<id>): destroy an instance based on its ID
+        <class name>.update(<id>, <attribute name>, <attribute value>):
+            updates an instance based on its ID
+        <class name>.update(<id>, <dictionary representation>):
+            updates an instance based on its ID
+        Note: d = ast.literal_eval(re.search('({.+})', update_dict).group(0))
+        """
+        args = arg.split('.', 1)
+        
+        class_name = args[0]
+        if class_name in [cls.__name__ for cls in globals().values() if isinstance(cls, type)]:
+            command = args[1].strip('()')
+            commands = {'all': self.do_all, 'count': self.obj_count}
+
+            if command in commands:
+                commands[command](class_name)
+            elif command.startswith('show'):
+                obj_id = command.split('("', 1)[1].rstrip('")')
+                self.do_show(args[0]+' '+obj_id)
+
+                #f not obj_id:
+                 #  print("** instance id missing **")
+                  # return
+                #or key in storage.all():
+                 #  if obj_id == key.split('.')[1]:
+                       # self.do_show(class_name, obj_id)
+                #if '(' in command and ')' in command:
+                    #obj_id = command.split('(', 1)[1].rstrip(')')
+                   # self.do_show(class_name, obj_id)
+                #else:
+
+            elif command.startswith('destroy'):
+                obj_id = command.split('("', 1)[1].rstrip('")')
+                self.do_destroy(args[0]+' '+obj_id)
+                #self.do_destroy(args[0]+' '+args[1].split('("')[1].strip('")'))
+                """if '(' in command and ')' in command:
+                    obj_id = command.split('(', 1)[1].rstrip(')')
+                    destroy_in = ["destroy", str(obj_id)]
+                    self.do_destroy(class_name, destroy_in)
+            elif command.startswith('update'):
+                obj_id = command.split('(', 1)[1].rstrip(')')
+            else:
+                print("** Unknown command **")
+"""
+
+    @staticmethod
+    def obj_count(arg):
+        """This prints the number of instances of a class
+        
+        Usage: <class name>.count(), retrieve the number of instances
+        of a class
+        """
+        if not arg:
+            print("** class name missing**")
+        elif arg not in [cls.__name__ for cls in globals().values() if isinstance(cls, type)]:
+            print("** class doesn't exist **")
+        else:
+            counter = 0
+            for key in storage.all():
+                if arg == key.split('.')[0]:
+                    counter += 1
+            print(counter)
+        
 
 
 if __name__ == '__main__':
