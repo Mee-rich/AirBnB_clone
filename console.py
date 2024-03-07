@@ -155,38 +155,26 @@ class HBNBCommand(cmd.Cmd):
         class_name = args[0]
         if class_name in [cls.__name__ for cls in globals().values() if isinstance(cls, type)]:
             command = args[1].strip('()')
-            commands = {'all': self.do_all, 'count': self.obj_count}
+            commands = {'all': self.do_all, 'count': self.obj_count, 'create': self.do_create} 
 
             if command in commands:
                 commands[command](class_name)
             elif command.startswith('show'):
                 obj_id = command.split('("', 1)[1].rstrip('")')
                 self.do_show(args[0]+' '+obj_id)
-
-                #f not obj_id:
-                 #  print("** instance id missing **")
-                  # return
-                #or key in storage.all():
-                 #  if obj_id == key.split('.')[1]:
-                       # self.do_show(class_name, obj_id)
-                #if '(' in command and ')' in command:
-                    #obj_id = command.split('(', 1)[1].rstrip(')')
-                   # self.do_show(class_name, obj_id)
-                #else:
-
             elif command.startswith('destroy'):
                 obj_id = command.split('("', 1)[1].rstrip('")')
                 self.do_destroy(args[0]+' '+obj_id)
-                #self.do_destroy(args[0]+' '+args[1].split('("')[1].strip('")'))
-                """if '(' in command and ')' in command:
-                    obj_id = command.split('(', 1)[1].rstrip(')')
-                    destroy_in = ["destroy", str(obj_id)]
-                    self.do_destroy(class_name, destroy_in)
             elif command.startswith('update'):
-                obj_id = command.split('(', 1)[1].rstrip(')')
+                formatted = command.replace('update(', '').replace(')', '')
+                new_args = [aarg.strip('"') for aarg in formatted.split(',') 
+                 
+                print(new_args)
+                obj_id, attr_name, attr_value = new_args
+                print(obj_id)
+                self.do_update(args[0]+' '+obj_id+' '+attr_name+' '+attr_value)
             else:
                 print("** Unknown command **")
-"""
 
     @staticmethod
     def obj_count(arg):
